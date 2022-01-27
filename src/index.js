@@ -28,8 +28,10 @@ The `piggybankContract` is compiled from:
   }
 */
 
-import { encrypt } from 'eth-sig-util'
+import {encrypt} from 'eth-sig-util'
 import MetaMaskOnboarding from '@metamask/onboarding'
+
+const ethers = require('ethers')
 
 const currentUrl = new URL(window.location.href)
 const forwarderOrigin = currentUrl.hostname === 'localhost'
@@ -41,13 +43,28 @@ const isMetaMaskInstalled = () => {
   return Boolean(ethereum && ethereum.isMetaMask)
 }
 
+// get contract
+const tokenERC20ABI = require('../abi/TokenERC20.json')
+
+const addressContract = '0xc3C4424cFB6f6fb815ECBFe1460C07d1f435fa1a'
+
+const provider = new ethers.providers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545')
+const signer = new ethers.Wallet('9c0692ee315a9697093e432a75a33ead5bc11528ffee6e4c79f4e734f1579253', provider);
+
+const contractERC20 = new ethers.Contract(addressContract, tokenERC20ABI, provider)
+console.log({contractERC20})
+
 // Dapp Status Section
 const networkDiv = document.getElementById('network')
 const chainIdDiv = document.getElementById('chainId')
 const accountsDiv = document.getElementById('accounts')
+const balanceUser1Div = document.getElementById('balanceUser1')
+const balanceUser2Div = document.getElementById('balanceUser2')
+const totalSupplyDiv = document.getElementById('supply')
 
 // Basic Actions Section
 const onboardButton = document.getElementById('connectButton')
+const sendEtherButton = document.getElementById('sendEther')
 const getAccountsButton = document.getElementById('getAccounts')
 const getAccountsResults = document.getElementById('getAccountsResult')
 
@@ -135,11 +152,17 @@ const initialize = async () => {
     }
   }
 
+
   const clearTextDisplays = () => {
     encryptionKeyDisplay.innerText = ''
     encryptMessageInput.value = ''
     ciphertextDisplay.innerText = ''
     cleartextDisplay.innerText = ''
+  }
+
+
+  const transferEther = async () => {
+    await contractERC20.transfer('0x1a2602Ea19C469aeCa5AB4a4BC5495290e65C29F', ethers.utils.parseEther('1'))
   }
 
   const updateButtons = () => {
@@ -167,12 +190,16 @@ const initialize = async () => {
       if (onboarding) {
         onboarding.stopOnboarding()
       }
+      sendEtherButton.onclick = transferEther
+
     } else {
       onboardButton.innerText = 'Connect'
       onboardButton.onclick = onClickConnect
       onboardButton.disabled = false
     }
+
   }
+
 
   const initializeAccountButtons = () => {
 
@@ -496,9 +523,12 @@ const initialize = async () => {
     }
   }
 
-  function handleNewAccounts (newAccounts) {
+  async function handleNewAccounts (newAccounts) {
     accounts = newAccounts
     accountsDiv.innerHTML = accounts
+    balanceUser1Div.innerHTML = ethers.utils.formatEther(await contractERC20.balanceOf(newAccounts[0]))
+    balanceUser2Div.innerHTML = ethers.utils.formatEther(await contractERC20.balanceOf('0x1a2602Ea19C469aeCa5AB4a4BC5495290e65C29F'))
+    totalSupplyDiv.innerHTML = ethers.utils.formatEther(await contractERC20.totalSupply())
     if (isMetaMaskConnected()) {
       initializeAccountButtons()
     }
